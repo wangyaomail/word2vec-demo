@@ -98,7 +98,7 @@ public class Word2VecDemo {
             Map<String, Node> nodeMap = wordNodes.stream()
                                                  .collect(Collectors.toMap(n -> n.word, n -> n));
             TreeSet<Node> allNodes = new TreeSet<Node>(wordNodes);
-            // 构建haffman树
+            // 构建huffman树
             while (allNodes.size() > 1) {
                 Node left = allNodes.pollFirst();
                 Node right = allNodes.pollFirst();
