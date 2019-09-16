@@ -3,6 +3,7 @@ package cn.dendarii;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -129,7 +130,7 @@ public class Word2VecDemo {
                 }
             }
             // 降采样简化策略，每次训练一句话中训练次数最少的词
-            for (int epouch = 0; epouch < 10000; epouch++) {
+            for (int epouch = 0; epouch < 1000000; epouch++) {
                 for (String[] toks : trainList) {
                     int pos = 0;
                     Node minNode = nodeMap.get(toks[0]);
@@ -156,7 +157,7 @@ public class Word2VecDemo {
                             // 计算sigmoid分类值
                             f = 1 - 1 / (1 + Math.exp(f));
                             // 计算更新的梯度，交叉熵-1即是梯度
-                            double g = -(f - 1) * 0.025;
+                            double g = -(f + pathNode.code - 1) * 0.025;
                             // 积累误差项
                             for (int j = 0; j < dim; j++) {
                                 dx[j] += g * pathNode.k[j];
@@ -174,15 +175,38 @@ public class Word2VecDemo {
                 }
             }
             // 输出训练结果
+            DecimalFormat df = new DecimalFormat("#0.00");
             for (Node word : wordNodes) {
                 StringBuffer sb = new StringBuffer();
                 for (int i = 0; i < word.x.length; i++) {
-                    sb.append(word.x[i]).append(",");
+                    sb.append(df.format(word.x[i])).append(",");
                 }
                 System.out.println(word.word + "：\t" + sb.toString());
             }
+            // 输出欧氏距离
+            for (Node word1 : wordNodes) {
+                System.out.print(word1.word + "\t");
+                for (Node word2 : wordNodes) {
+                    // System.out.println(word1.word + "-" + word2.word + "："
+                    // + df.format(euclideanDistance(word1.x, word2.x)));
+                    System.out.print(df.format(euclideanDistance(word1.x, word2.x)) + "\t");
+                }
+                System.out.println("");
+            }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+    public static double euclideanDistance(double[] x,
+                                           double[] y) {
+        if (x == null || y == null || x.length != y.length) {
+            return -1;
+        } else {
+            double sum = 0;
+            for (int i = 0; i < x.length; i++) {
+                sum += (x[i] - y[i]) * (x[i] - y[i]);
+            }
+            return Math.sqrt(sum);
         }
     }
 }
