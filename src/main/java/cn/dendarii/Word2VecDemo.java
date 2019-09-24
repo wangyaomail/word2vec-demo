@@ -17,6 +17,9 @@ import java.util.stream.Collectors;
 public class Word2VecDemo {
     public static void main(String[] args) {
         try {
+            
+            // 自动生成一个训练字符串
+            
             // 先读入所有字
             List<String[]> trainList = new ArrayList<String[]>();
             BufferedReader br = new BufferedReader(new FileReader(new File("data\\test2")));
