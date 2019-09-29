@@ -28,18 +28,18 @@ public class GloveDemo {
                                   { "a", "x", "b" } };
     public static void main(String[] args) {
         try {
-            List<String> trainList = new ArrayList<String>();
+            List<String> train_list = new ArrayList<String>();
             if (true) {
                 // 生成需要的训练字符串，格式是混淆字符串+训练字符串1+混淆字符串+训练字符串2+...
                 Random rand1 = new Random(1);
                 for (int turn = 0; turn < 20; turn++) {
                     int nauty_num = rand1.nextInt(10);
                     for (int i = 0; i < nauty_num; i++) {
-                        trainList.add(nauty[rand1.nextInt(nauty.length)]);
+                        train_list.add(nauty[rand1.nextInt(nauty.length)]);
                     }
                     String[] insertPattern = pattern[turn % 4]; // 如果是4则是1:1:1:1，如果是5则是3:3:2:2
                     for (int i = 0; i < insertPattern.length; i++) {
-                        trainList.add(insertPattern[i]);
+                        train_list.add(insertPattern[i]);
                     }
                 }
             } else if (false) {
@@ -48,11 +48,11 @@ public class GloveDemo {
                 for (int turn = 0; turn < 20; turn++) {
                     int nauty_num = rand1.nextInt(10);
                     for (int i = 0; i < nauty_num; i++) {
-                        trainList.add(nauty[rand1.nextInt(nauty.length)]);
+                        train_list.add(nauty[rand1.nextInt(nauty.length)]);
                     }
                     String[] insertPattern = pattern[rand1.nextInt(pattern.length)];
                     for (int i = 0; i < insertPattern.length; i++) {
-                        trainList.add(insertPattern[i]);
+                        train_list.add(insertPattern[i]);
                     }
                 }
             } else {
@@ -63,7 +63,7 @@ public class GloveDemo {
                     String[] words = line.trim().split(" ");
                     if (words.length > 1) {
                         for (String word : words) {
-                            trainList.add(word);
+                            train_list.add(word);
                         }
                     }
                 }
@@ -71,12 +71,12 @@ public class GloveDemo {
             }
             // 输出原始训练语句
             if (true) {
-                trainList.forEach(w -> System.out.print(w + " "));
+                train_list.forEach(w -> System.out.print(w + " "));
                 System.out.println("");
             }
             // 将所有词放入word_count
             HashMap<String, Integer> word_count = new HashMap<String, Integer>();
-            for (String word : trainList) {
+            for (String word : train_list) {
                 Integer countInteger = word_count.get(word);
                 if (countInteger != null) {
                     word_count.put(word, countInteger + 1);
@@ -108,9 +108,9 @@ public class GloveDemo {
                         .forEach(e -> System.out.println(e.getKey() + ":" + e.getValue()));
             }
             // 利用编号对原始语句进行重述
-            int[] codeArr = new int[trainList.size()];
-            for (int i = 0; i < trainList.size(); i++) {
-                codeArr[i] = wordCode.get(trainList.get(i));
+            int[] codeArr = new int[train_list.size()];
+            for (int i = 0; i < train_list.size(); i++) {
+                codeArr[i] = wordCode.get(train_list.get(i));
             }
             // 输出重述后的语句
             if (true) {

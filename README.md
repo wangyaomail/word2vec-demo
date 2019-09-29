@@ -10,3 +10,9 @@
 增加glove的实现，参考官方实现完成：https://github.com/stanfordnlp/GloVe
 
 删掉工程性的部分，只保留算法性的代码
+
+## +rnn
+参考这个代码实现：https://github.com/garstka/char-rnn-java
+
+删掉窗口机制，保留单层和多层的训练方法
+
