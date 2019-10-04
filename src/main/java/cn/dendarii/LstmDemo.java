@@ -9,11 +9,8 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.stream.Collectors;
 
-/**
- * 简化版的rnn，每两步训练之间的变量用下划线命名，而中间变量用驼峰命名
- */
 @SuppressWarnings("unused")
-public class RnnDemo {
+public class LstmDemo {
     static String[] nauty = { "x", "y", "z" };
     static String[][] pattern = { { "a", "b", "c" }, { "d", "e", "f" } };
     static DecimalFormat df = new DecimalFormat("#0.00000");
@@ -101,179 +98,165 @@ public class RnnDemo {
                 test_list.add(pattern[i][j]);
             }
         }
-        // 首先构造RNN基本单元
-        int dim = 5;
-        class rnn {
-            // 三个w矩阵和两个偏置项，大小都是向量维度*向量维度，这里默认中间向量维度和输出向量维度是一样的
-            public double[][] wx = new double[dim][word_num];
-            public double[][] wh = new double[dim][dim];
-            public double[][] wo = new double[word_num][dim];
-            // 偏置项，大小是维度*1
-            public double[] bh = new double[dim];
-            public double[] bo = new double[word_num];
-            // h、o状态，大小均是向量维度*1
+        // 构造lstm的单元，注意这里严格来说内部向量的权重并不要求一定一样，但是出于简化考虑都进行统一
+        int dim = 3;
+        class lstm {
+            // w矩阵和b矩阵
+            public double[][] wfh = new double[dim][dim];
+            public double[][] wfx = new double[dim][word_num];
+            public double[] bf = new double[dim];
+            public double[][] wih = new double[dim][dim];
+            public double[][] wix = new double[dim][word_num];
+            public double[] bi = new double[dim];
+            public double[][] wch = new double[dim][dim];
+            public double[][] wcx = new double[dim][word_num];
+            public double[] bc = new double[dim];
+            public double[][] woh = new double[dim][dim];
+            public double[][] wox = new double[dim][word_num];
+            public double[] bo = new double[dim];
+            public double[][] wy = new double[dim][word_num];
+            public double[] by = new double[word_num];
+            // 状态矩阵
+            public double[] f = new double[dim];
+            public double[] i = new double[dim];
+            public double[] c_prev = new double[dim];
+            public double[] c = new double[dim];
+            public double[] c_ = new double[dim];
             public double[] h_prev = new double[dim];
             public double[] h = new double[dim];
-            public double[] o = new double[word_num];
-            public double[] dh_prev = new double[dim];
+            public double[] o = new double[dim];
+            public double[] y = new double[word_num];
         }
-        // 构造rnn单元序列，认为序列长度为3
+        // 构造lstm单元序列，认为序列长度为3
         int layer_num = 1;
-        rnn[] layer = new rnn[layer_num];
+        lstm[] layer = new lstm[layer_num];
         Random rand2 = new Random(2);
         for (int l = 0; l < layer_num; l++) {
-            layer[l] = new rnn();
-            for (int i = 0; i < dim; i++) {
-                for (int j = 0; j < word_num; j++) {
-                    layer[l].wx[i][j] = rand2.nextDouble();
-                    layer[l].wo[j][i] = rand2.nextDouble();
-                }
-                for (int j = 0; j < dim; j++) {
-                    layer[l].wh[i][j] = rand2.nextDouble();
-                }
-                layer[l].h[i] = rand2.nextDouble();
-            }
+            layer[l] = new lstm();
+            Mat.apply(layer[l].wfh, x -> rand2.nextDouble(), false);
+            Mat.apply(layer[l].wfx, x -> rand2.nextDouble(), false);
+            Mat.apply(layer[l].bf, x -> rand2.nextDouble(), false);
+            Mat.apply(layer[l].wih, x -> rand2.nextDouble(), false);
+            Mat.apply(layer[l].wix, x -> rand2.nextDouble(), false);
+            Mat.apply(layer[l].bi, x -> rand2.nextDouble(), false);
+            Mat.apply(layer[l].wch, x -> rand2.nextDouble(), false);
+            Mat.apply(layer[l].wcx, x -> rand2.nextDouble(), false);
+            Mat.apply(layer[l].bc, x -> rand2.nextDouble(), false);
+            Mat.apply(layer[l].woh, x -> rand2.nextDouble(), false);
+            Mat.apply(layer[l].wox, x -> rand2.nextDouble(), false);
+            Mat.apply(layer[l].bo, x -> rand2.nextDouble(), false);
+            Mat.apply(layer[l].wy, x -> rand2.nextDouble(), false);
+            Mat.apply(layer[l].by, x -> rand2.nextDouble(), false);
+            Mat.apply(layer[l].c, x -> rand2.nextDouble(), false);
+            Mat.apply(layer[l].h, x -> rand2.nextDouble(), false);
+            Mat.normalize2d(layer[l].c);
             Mat.normalize2d(layer[l].h);
         }
         class LayerFunctions {
-            public void forward(rnn l,
+            public void forward(lstm l,
                                 double[] x_t_in,
                                 boolean output) {
-                // 计算x
-                double[] x_t_out = new double[dim];
-                for (int d = 0; d < dim; d++) {
-                    for (int j = 0; j < word_num; j++) {
-                        x_t_out[d] += l.wx[d][j] * x_t_in[j];
-                    }
+                if (epouch == 500) {
+                    // System.out.println(123);
                 }
-                // 计算和x加和以前的h
-                double[] h_t_in = new double[dim];
-                for (int d_row = 0; d_row < dim; d_row++) {
-                    for (int d_col = 0; d_col < dim; d_col++) {
-                        h_t_in[d_row] += l.wh[d_row][d_col] * l.h[d_col];
-                    }
-                }
-                // 计算最后的h，注意这里并不是h更新的地方
-                for (int d = 0; d < dim; d++) {
-                    l.h_prev[d] = l.h[d];
-                    l.h[d] = Math.tanh(h_t_in[d] + x_t_out[d] + l.bh[d]);
-                }
-                // // 强行归一化h，让h只能在圆面上移动
-                // Mat.normalize2d(l.h);
-                if (output) {
-                    System.out.print(epouch + "\t");
-                    for (int d = 0; d < dim; d++) {
-                        System.out.print(df.format(l.h[d]) + ",");
-                    }
-                    System.out.println("");
-                }
-                // // 对h进行正则化
-                // Mat.normalize2d(l.h);
-                // 计算output
-                double[] o_t_in = new double[word_num];
-                for (int d_row = 0; d_row < word_num; d_row++) {
-                    for (int d_col = 0; d_col < dim; d_col++) {
-                        o_t_in[d_row] += l.wo[d_row][d_col] * l.h[d_col];
-                    }
-                    o_t_in[d_row] += l.bo[d_row];
-                }
-                for (int d = 0; d < word_num; d++) {
-                    l.o[d] = Math.exp(o_t_in[d]);
-                }
-                // 对l.o进行归一化，等同softmax的被除数
-                Mat.normalize1d(l.o);
+                // 计算f
+                l.f = Mat.add(Mat.mul(l.wfh, l.h_prev), Mat.mul(l.wfx, x_t_in), l.bf);
+                Mat.apply(l.f, x -> Mat.sigmoid(x), false);
+                // 计算i
+                l.i = Mat.add(Mat.mul(l.wih, l.h_prev), Mat.mul(l.wix, x_t_in), l.bi);
+                Mat.apply(l.i, x -> Mat.sigmoid(x), false);
+                // 计算c_
+                l.c_ = Mat.add(Mat.mul(l.wch, l.h_prev), Mat.mul(l.wcx, x_t_in), l.bc);
+                Mat.apply(l.c_, x -> Math.tanh(x), false);
+                // 计算c
+                System.arraycopy(l.c, 0, l.c_prev, 0, l.c.length);
+                l.c = Mat.add(Mat.applyMul(l.f, l.c_prev), Mat.applyMul(l.i, l.c_));
+                // 计算o
+                l.o = Mat.add(Mat.mul(l.woh, l.h_prev), Mat.mul(l.wox, x_t_in), l.bo);
+                Mat.apply(l.o, x -> Mat.sigmoid(x), false);
+                // 计算h
+                System.arraycopy(l.h, 0, l.h_prev, 0, l.h.length);
+                l.h = Mat.apply(l.c, x -> Math.tanh(x), true);
+                l.h = Mat.applyMul(l.o, l.h);
+                // 计算y
+                l.y = Mat.add(Mat.mul(Mat.reverse(l.wy), l.h), l.by);
+                Mat.softmax(l.y);
             }
-            public double[] backward(rnn l,
+            public double[] backward(lstm l,
                                      double[] x_t_in,
                                      double[] dy,
                                      boolean output) {
-                double[][] dwx = new double[dim][word_num];
-                double[][] dwh = new double[dim][dim];
-                double[][] dwo = new double[word_num][dim];
-                double[] dbh = new double[dim];
-                double[] dbo = new double[word_num];
-                // 计算dwo
-                for (int d_rol = 0; d_rol < word_num; d_rol++) {
-                    for (int d_col = 0; d_col < dim; d_col++) {
-                        dwo[d_rol][d_col] = dy[d_rol] * l.h[d_col];
-                    }
+                if (epouch == 50000) {
+                    // System.out.println(123);
                 }
-                // 计算dbo
-                for (int d = 0; d < word_num; d++) {
-                    dbo[d] = dy[d];
-                }
-                // 计算dh
-                double[] dh = new double[dim];
-                // 这个地方加不加dh_prev对结果的影响都不大
-                // System.arraycopy(l.dh_prev, 0, dh, 0, dim);
-                for (int d_rol = 0; d_rol < word_num; d_rol++) {
-                    for (int d_col = 0; d_col < dim; d_col++) {
-                        dh[d_col] += l.wo[d_rol][d_col] * dy[d_rol];
-                    }
-                }
-                // dh是经过tanh计算的，需要在原有的结果中消除tanh的影响
-                double[] dh_raw = new double[dim];
-                for (int d = 0; d < dim; d++) {
-                    dh_raw[d] = (1 - l.h[d] * l.h[d]) * dh[d];
-                }
-                // 计算dhprev
-                l.dh_prev = new double[dim];
-                for (int d_rol = 0; d_rol < dim; d_rol++) {
-                    for (int d_col = 0; d_col < dim; d_col++) {
-                        l.dh_prev[d_rol] += l.wh[d_rol][d_col] * dh_raw[d_rol];
-                    }
-                }
-                // 计算dwx
-                for (int d_rol = 0; d_rol < word_num; d_rol++) {
-                    for (int d_col = 0; d_col < dim; d_col++) {
-                        dwx[d_col][d_rol] = x_t_in[d_rol] * dh_raw[d_col];
-                    }
-                }
-                // 计算dwh
-                for (int d_rol = 0; d_rol < dim; d_rol++) {
-                    for (int d_col = 0; d_col < dim; d_col++) {
-                        dwh[d_rol][d_col] = l.h_prev[d_rol] * dh_raw[d_col];
-                    }
-                }
-                // 计算dbh
-                for (int d = 0; d < dim; d++) {
-                    dbh[d] = dh_raw[d];
-                }
-                // 更新各个值
-                Mat.update(l.wo, dwo);
-                Mat.update(l.wh, dwh);
-                Mat.update(l.wx, dwx);
-                Mat.update(l.bo, dbo);
-                Mat.update(l.bh, dbh);
-                // 输出各个更新向量的向量长度
-                if (output) {
-                    System.out.print(df.format(Mat.vectorLength(dwh)) + "\t");
-                }
-                // // 对当前层所有参数归一化
-                // normalize(l);
-                // 计算对x的更新要求
+                // 1.计算dwy
+                double[][] dwy = Mat.mulx1d1d(l.h, dy);
+                // 2.计算dh
+                double[] dh = Mat.mul(l.wy, dy);
+                // 计算do，因关键字原因带下划线
+                double[] do_ = Mat.applyMul(l.c, dh);
+                do_ = Mat.applyMul(do_, Mat.sigmoidg(l.o));
+                // 计算dwoh
+                double[][] dwoh = Mat.mulx1d1d(l.h_prev, do_);
+                // 计算dwox
+                double[][] dwox = Mat.mulx1d1d(x_t_in, do_);
+                // 3.计算dc
+                double[] dc = Mat.applyMul(dh, l.o);
+                dc = Mat.applyMul(dc, Mat.tanhg(l.c));
+                // 4.计算dc_
+                double[] dc_ = Mat.applyMul(dc, l.i);
+                dc_ = Mat.applyMul(dc_, Mat.tanhg(l.c_));
+                // 计算dwch
+                double[][] dwch = Mat.mulx1d1d(l.h_prev, dc_);
+                // 计算dwcx
+                double[][] dwcx = Mat.mulx1d1d(x_t_in, dc_);
+                // 5.计算df
+                double[] df = Mat.applyMul(dc, l.c_prev);
+                df = Mat.applyMul(df, Mat.sigmoidg(l.f));
+                // 计算dwfh
+                double[][] dwfh = Mat.mulx1d1d(l.h_prev, df);
+                // 计算dwfx
+                double[][] dwfx = Mat.mulx1d1d(x_t_in, df);
+                // 6.计算di
+                double[] di = Mat.applyMul(dc, l.c_);
+                df = Mat.applyMul(df, Mat.sigmoidg(l.i));
+                // 计算dwfh
+                double[][] dwih = Mat.mulx1d1d(l.h_prev, di);
+                // 计算dwfx
+                double[][] dwix = Mat.mulx1d1d(x_t_in, di);
+                // 更新各个参数
+                Mat.update(l.wy, dwy);
+                Mat.update(l.by, dy);
+                Mat.update(l.wox, Mat.reverse(dwox));
+                Mat.update(l.bo, do_);
+                Mat.update(l.wch, Mat.reverse(dwch));
+                Mat.update(l.wcx, Mat.reverse(dwcx));
+                Mat.update(l.bc, dc_);
+                Mat.update(l.wfh, Mat.reverse(dwfh));
+                Mat.update(l.wfx, Mat.reverse(dwfx));
+                Mat.update(l.bf, df);
+                Mat.update(l.wih, Mat.reverse(dwih));
+                Mat.update(l.wix, Mat.reverse(dwix));
+                Mat.update(l.bi, di);
+                // 计算上一层的dx，取f、i、c_、o的前向x误差平均值
                 double[] dx = new double[word_num];
                 for (int d_rol = 0; d_rol < word_num; d_rol++) {
                     for (int d_col = 0; d_col < dim; d_col++) {
-                        dx[d_rol] = l.wx[d_col][d_rol] * dh[d_col];
+                        dx[d_rol] += l.wfx[d_col][d_rol] * df[d_col];
+                        dx[d_rol] += l.wix[d_col][d_rol] * di[d_col];
+                        dx[d_rol] += l.wcx[d_col][d_rol] * dc_[d_col];
+                        dx[d_rol] += l.wox[d_col][d_rol] * do_[d_col];
                     }
+                    dx[d_rol] = dx[d_rol] / 4;
                 }
+                // // 尝试归一化h和c
+                // Mat.normalize2d(l.c);
+                // Mat.normalize2d(l.h);
                 return dx;
-            }
-            public void normalize(rnn l) {
-                Mat.normalize(l.wx, false);
-                Mat.normalize(l.wh, false);
-                Mat.normalize(l.wo, false);
-                Mat.normalize2d(l.bh);
-                Mat.normalize2d(l.bo);
-                // normalize(l.h);
-                // normalize(l.o);
             }
         }
         LayerFunctions layerFunctions = new LayerFunctions();
-        // 进行训练
-        // 更新每个epouch中训练的数据都是环形的，且所有w权重都从0开始
-        for (epouch = 0; epouch < 10000; epouch++) {
+        for (epouch = 0; epouch < 1000000; epouch++) {
             double loss = 0;
             // 注意学习的时候，序列最后一位不要了，保证循环性
             for (int i = 0; i < train_list.size() - 1; i++) {
@@ -290,14 +273,10 @@ public class RnnDemo {
                 }
                 // 计算损失，这一步的损失应该是当前词送到模型以后的输出和下一位之间的交叉熵
                 int x_t_1_pos = word_map.get(train_list.get(i + 1));
-                loss -= Math.log(layer[layer_num - 1].o[x_t_1_pos]);
+                loss -= Math.log(layer[layer_num - 1].y[x_t_1_pos]);
                 if (layer_num > 1) {
                     // 计算最后一层的权重值，dy=o[t]-x[t+1]
-                    double[] dy = new double[word_num];
-                    double[] o_expected = one_hot[word_map.get(train_list.get(i + 1))];
-                    for (int d = 0; d < word_num; d++) {
-                        dy[d] = layer[layer_num - 1].o[d] - o_expected[d];
-                    }
+                    double[] dy = Mat.applyMinus(layer[layer_num - 1].y, one_hot[word_map.get(train_list.get(i + 1))]);
                     double[] dx = layerFunctions.backward(layer[layer_num - 1], layer[layer_num - 2].o, dy, false);
                     // 依次更新前几层权重值
                     for (int l_id = layer_num - 2; l_id > 0; l_id--) {
@@ -306,19 +285,12 @@ public class RnnDemo {
                     // 更新第一层
                     layerFunctions.backward(layer[0], x_t_in, dx, true);
                 } else {
-                    double[] dy = new double[word_num];
-                    double[] o_expected = one_hot[word_map.get(train_list.get(i + 1))];
-                    for (int d = 0; d < word_num; d++) {
-                        dy[d] = layer[0].o[d] - o_expected[d];
-                    }
+                    double[] dy = Mat.applyMinus(layer[0].y, one_hot[word_map.get(train_list.get(i + 1))]);
                     layerFunctions.backward(layer[0], x_t_in, dy, epouch % 100 == 0 && i == train_list.size() - 2);
                 }
             }
-            if (false && epouch % 10 == 0) {
-                System.out.println("");
-            }
             // 输出损失
-            if (epouch % 100 == 0) {
+            if (false && epouch % 100 == 0) {
                 StringBuffer sb = new StringBuffer();
                 sb.append("epouch=").append(epouch).append("\t");
                 sb.append("loss=").append(df.format(loss)).append("\ttest=");
@@ -329,11 +301,14 @@ public class RnnDemo {
                 // 进行预测
                 double maxVal = 0.0;
                 // 保存layer的临时状态
-                double[][][] h_cache = new double[2][layer_num][dim];
+                double[][][] h_cache = new double[4][layer_num][dim];
                 for (int i = 0; i < layer_num; i++) {
                     h_cache[0][i] = layer[i].h;
                     h_cache[1][i] = layer[i].h_prev;
+                    h_cache[2][i] = layer[i].c;
+                    h_cache[3][i] = layer[i].c_prev;
                 }
+                StringBuffer sb2 = new StringBuffer();
                 for (int i = 0; i < test_list.size(); i++) {
                     // 获取w的one-hot值
                     int x_t_pos = word_map.get(test_list.get(i));
@@ -347,21 +322,34 @@ public class RnnDemo {
                         }
                     }
                     int max = 0;
+                    sb2.append(x_t_pos).append("\t");
                     for (int w = 0; w < word_num; w++) {
-                        if (layer[layer_num - 1].o[w] > layer[layer_num - 1].o[max]) {
+                        sb2.append((int) (layer[layer_num - 1].y[w] * 100)).append("\t");
+                        if (layer[layer_num - 1].y[w] > layer[layer_num - 1].y[max]) {
                             max = w;
                         }
                     }
+                    sb2.append("\n");
                     sb.append(word_seq[max]);
-                    maxVal += layer[layer_num - 1].o[max];
+                    maxVal += layer[layer_num - 1].y[max];
                 }
                 // 恢复layer的临时状态
                 for (int i = 0; i < layer_num; i++) {
                     layer[i].h = h_cache[0][i];
                     layer[i].h_prev = h_cache[1][i];
+                    layer[i].c = h_cache[2][i];
+                    layer[i].c_prev = h_cache[3][i];
                 }
                 sb.append("\tavgscore=").append(df.format(maxVal));
                 System.out.println(sb.toString());
+                if (false) {
+                    System.out.println(sb2.toString());
+                }
+            }
+            if (true && epouch % 10000 == 0) {
+                System.out.print(epouch + "\t" + df.format(loss) + "\t");
+                System.out.print(Mat.vectorString("h", df, layer[0].h));
+                System.out.print("\t" + Mat.vectorString("c", df, layer[0].c) + "\n");
             }
         }
     }
