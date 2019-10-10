@@ -33,9 +33,10 @@ public class Mat {
     /**
      * 按照alpha更新第一个数组
      */
+    public static double updataAlpha = 0.05;
     public static void update(double[] src,
                               double[] dsrc) {
-        update(src, dsrc, 0.05, 10);
+        update(src, dsrc, updataAlpha, 10);
     }
     public static void update(double[] src,
                               double[] dsrc,
@@ -99,11 +100,56 @@ public class Mat {
      */
     public static double[] applyAdd(double[] a,
                                     double[] b) {
-        double[] y = new double[a.length];
-        for (int i = 0; i < a.length; i++) {
-            y[i] = a[i] + b[i];
+        return applyAdd(a, b, true);
+    }
+    /**
+     * 按位加
+     */
+    public static double[] applyAdd(double[] a,
+                                    double[] b,
+                                    boolean newSet) {
+        if (newSet) {
+            double[] y = new double[a.length];
+            for (int i = 0; i < a.length; i++) {
+                y[i] = a[i] + b[i];
+            }
+            return y;
+        } else {
+            for (int i = 0; i < a.length; i++) {
+                a[i] += b[i];
+            }
+            return a;
         }
-        return y;
+    }
+    /**
+     * 按位加
+     */
+    public static double[][] applyAdd(double[][] a,
+                                      double[][] b) {
+        return applyAdd(a, b, true);
+    }
+    /**
+     * 按位加
+     */
+    public static double[][] applyAdd(double[][] a,
+                                      double[][] b,
+                                      boolean newSet) {
+        if (newSet) {
+            double[][] y = new double[a.length][a[0].length];
+            for (int i = 0; i < a.length; i++) {
+                for (int j = 0; j < a[0].length; j++) {
+                    y[i][j] = a[i][j] + b[i][j];
+                }
+            }
+            return y;
+        } else {
+            for (int i = 0; i < a.length; i++) {
+                for (int j = 0; j < a[0].length; j++) {
+                    a[i][j] += b[i][j];
+                }
+            }
+            return a;
+        }
     }
     /**
      * 按位减
@@ -332,5 +378,13 @@ public class Mat {
             sb.append("\t").append(df.format(x[i]));
         }
         return sb.toString();
+    }
+    /**
+     * 简化版arraycopy
+     */
+    public static void arraycopy(double[] src,
+                                 double[] dst,
+                                 int length) {
+        System.arraycopy(src, 0, dst, 0, length);
     }
 }

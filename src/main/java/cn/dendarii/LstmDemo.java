@@ -219,7 +219,7 @@ public class LstmDemo {
                 double[][] dwfx = Mat.mulx1d1d(x_t_in, df);
                 // 6.计算di
                 double[] di = Mat.applyMul(dc, l.c_);
-                df = Mat.applyMul(df, Mat.sigmoidg(l.i));
+                di = Mat.applyMul(di, Mat.sigmoidg(l.i));
                 // 计算dwfh
                 double[][] dwih = Mat.mulx1d1d(l.h_prev, di);
                 // 计算dwfx
@@ -227,6 +227,7 @@ public class LstmDemo {
                 // 更新各个参数
                 Mat.update(l.wy, dwy);
                 Mat.update(l.by, dy);
+                Mat.update(l.woh, Mat.reverse(dwoh));
                 Mat.update(l.wox, Mat.reverse(dwox));
                 Mat.update(l.bo, do_);
                 Mat.update(l.wch, Mat.reverse(dwch));
@@ -290,7 +291,7 @@ public class LstmDemo {
                 }
             }
             // 输出损失
-            if (false && epouch % 100 == 0) {
+            if (true && epouch % 100 == 0) {
                 StringBuffer sb = new StringBuffer();
                 sb.append("epouch=").append(epouch).append("\t");
                 sb.append("loss=").append(df.format(loss)).append("\ttest=");

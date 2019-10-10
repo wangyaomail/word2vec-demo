@@ -13,6 +13,16 @@
 
 ## +rnn
 参考这个代码实现：https://github.com/garstka/char-rnn-java
-
 删掉窗口机制，保留单层和多层的训练方法
+增加封装BasicRNN，其测试代码在Seq2SeqDemo2.java
+
+## +lstm
+参考这个代码实现：https://github.com/lipiji/JRNN
+
+
+## +seq2seq
+参考这两个项目：
+- keras的seq2seq实现：https://github.com/farizrahman4u/seq2seq
+- TensorFlow的seq2seq实现：https://github.com/google/seq2seq
+当前版本代码中Seq2SeqDemo.java还有问题没有解决，Seq2SeqDemo2.java可以直接运行
 
