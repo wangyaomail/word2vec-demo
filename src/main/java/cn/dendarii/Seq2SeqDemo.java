@@ -1,5 +1,4 @@
 package cn.dendarii;
-
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -12,14 +11,13 @@ import java.util.stream.Collectors;
 import cn.dendarii.data.CountList;
 import cn.dendarii.data.Pair;
 import cn.dendarii.model.Lstm;
-
 /**
  * seq2seq整体和单层lstm差不多，只不过每层的输入和输出使用分开的两个lstm单元，中间靠c值传递
  */
 @SuppressWarnings("unused")
 public class Seq2SeqDemo {
-    static String[] nauty = { "x", "y", "z" };// , "a", "b", "c", "d", "e", "f" };
-    static String[] pattern = { "ab-cd", "ac-bd", "bc-ad", "cd-ab" };
+    static String[] nauty = {"x", "y", "z"};// , "a", "b", "c", "d", "e", "f" };
+    static String[] pattern = {"ab-cd", "ac-bd", "bc-ad", "cd-ab"};
     static String startToken = "s";
     static DecimalFormat df = new DecimalFormat("#0.00000");
     static int epouch;
@@ -59,9 +57,9 @@ public class Seq2SeqDemo {
         int word_num = word_count.size();
         // 排序
         List<Entry<String, Integer>> word_count_sorted = word_count.entrySet()
-                                                                   .stream()
-                                                                   .sorted(Comparator.comparing(e -> -e.getValue()))
-                                                                   .collect(Collectors.toList());
+                .stream()
+                .sorted(Comparator.comparing(e -> -e.getValue()))
+                .collect(Collectors.toList());
         // 输出word_count
         if (true) {
             word_count_sorted.forEach(e -> System.out.print(e.getKey() + ":" + e.getValue() + ", "));
